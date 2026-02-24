@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Cases | Slide Deck</title>
+    <meta name="description" content="Slide deck for comparing model outputs on the same prompt." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,slnt,wdth,wght@8..144,-10..0,25..151,100..1000&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg: #f3f4f6;
+        --surface: #fcfcfd;
+        --surface-muted: #f0f2f5;
+        --text: #111114;
+        --text-soft: #5e636e;
+        --stroke: #d2d5dc;
+        --accent: #cf2a2a;
+        --tile-bg: #eef1f6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        min-height: 100%;
+        height: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'Roboto Flex', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        display: block;
+      }
+
+      .noise {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 999;
+        opacity: 0.02;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      }
+
+      .top {
+        border-bottom: 1px solid var(--stroke);
+        background: color-mix(in srgb, var(--bg) 87%, white 13%);
+        backdrop-filter: blur(12px);
+        z-index: 30;
+      }
+
+      .top-inner {
+        max-width: 1880px;
+        margin: 0 auto;
+        padding: 12px clamp(12px, 2vw, 24px) 10px;
+      }
+
+      .top-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .title {
+        margin: 0;
+        font-size: clamp(26px, 2.6vw, 42px);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+        font-variation-settings: 'opsz' 84, 'wght' 620;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--text-soft);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+      }
+
+      .build {
+        color: var(--accent);
+        margin-left: 6px;
+      }
+
+      .deck-controls {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .deck-btn {
+        border: 1px solid var(--stroke);
+        border-radius: 12px;
+        background: var(--surface);
+        color: var(--text);
+        height: 36px;
+        min-width: 92px;
+        padding: 0 12px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .deck-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .deck-progress {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-soft);
+        min-width: 82px;
+        text-align: center;
+      }
+
+      .case-nav {
+        margin-top: 10px;
+        display: flex;
+        gap: 7px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: thin;
+      }
+
+      .case-nav::-webkit-scrollbar {
+        height: 6px;
+      }
+
+      .case-nav::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 999px;
+      }
+
+      .case-link {
+        border: 1px solid var(--stroke);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--text-soft);
+        padding: 6px 10px;
+        white-space: nowrap;
+        text-decoration: none;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: 180ms ease;
+      }
+
+      .case-link:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .case-link.active {
+        color: var(--accent);
+        border-color: var(--accent);
+        background: #fff;
+      }
+
+      main {
+        min-height: 0;
+        padding: 10px clamp(10px, 1.6vw, 20px) 12px;
+      }
+
+      .deck-stage {
+        position: relative;
+        width: min(1880px, 100%);
+        height: auto;
+        min-height: 0;
+        margin: 0 auto;
+        border: 1px solid var(--stroke);
+        border-radius: 18px;
+        overflow: hidden;
+        background: var(--surface);
+        box-shadow: 0 8px 28px rgba(15, 16, 20, 0.06);
+        transition: height 220ms ease;
+      }
+
+      .slides-track {
+        width: 100%;
+        height: auto;
+        display: flex;
+        align-items: flex-start;
+        will-change: transform;
+        transition: transform 340ms cubic-bezier(0.2, 0.74, 0.2, 1);
+      }
+
+      .slide {
+        flex: 0 0 100%;
+        width: 100%;
+        height: auto;
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto auto;
+        overflow: visible;
+      }
+
+      .slide.has-reference {
+        grid-template-rows: auto auto auto;
+      }
+
+      .slide-head {
+        border-bottom: 1px solid var(--stroke);
+        padding: 11px 12px;
+        display: grid;
+        gap: 6px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(252, 252, 253, 0.98));
+      }
+
+      .slide-title {
+        margin: 0;
+        font-size: clamp(20px, 2vw, 34px);
+        line-height: 0.95;
+        letter-spacing: -0.035em;
+        font-variation-settings: 'opsz' 76, 'wght' 590;
+      }
+
+      .slide-meta {
+        margin: 0;
+        color: var(--text-soft);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .slide-reference {
+        border-bottom: 1px solid var(--stroke);
+        padding: 8px 12px;
+        background: linear-gradient(180deg, rgba(253, 253, 254, 0.98), rgba(249, 250, 252, 0.98));
+        display: grid;
+        gap: 6px;
+      }
+
+      .slide-reference-label {
+        color: var(--text-soft);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .slide-reference-media {
+        border: 1px solid var(--stroke);
+        border-radius: 10px;
+        background: #fff;
+        padding: 6px;
+        width: fit-content;
+      }
+
+      .slide-reference-media img {
+        display: block;
+        width: auto;
+        max-width: min(100%, 360px);
+        max-height: 112px;
+        height: auto;
+      }
+
+      .slide-grid {
+        height: auto;
+        min-height: 0;
+        display: grid;
+        gap: 6px;
+        padding: 8px;
+        background: var(--stroke);
+        overflow: visible;
+        align-content: start;
+        align-items: start;
+        grid-auto-rows: max-content;
+      }
+
+      .masonry-grid {
+        display: block;
+        column-count: var(--masonry-columns, 4);
+        column-gap: 6px;
+      }
+
+      .masonry-grid .tile {
+        display: inline-block;
+        width: 100%;
+        margin: 0 0 6px;
+        break-inside: avoid;
+      }
+
+      .tile {
+        position: relative;
+        min-width: 0;
+        min-height: 0;
+        background: var(--surface-muted);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        align-self: start;
+        overflow: visible;
+        cursor: zoom-in;
+      }
+
+      .tile-media {
+        width: 100%;
+        display: block;
+        height: auto;
+      }
+
+      .tile img {
+        width: 100%;
+        max-width: 100%;
+        height: auto !important;
+        max-height: none !important;
+        object-fit: contain !important;
+        object-position: top center !important;
+        display: block;
+      }
+
+      .tile-model {
+        position: absolute;
+        top: 7px;
+        left: 7px;
+        z-index: 1;
+        border: 1px solid rgba(255, 255, 255, 0.34);
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.52);
+        color: rgba(255, 255, 255, 0.95);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 5px 7px;
+        max-width: calc(100% - 14px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .viewer {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: none;
+        background: rgba(9, 9, 11, 0.95);
+      }
+
+      .viewer.open {
+        display: block;
+      }
+
+      .viewer-layout {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 420px;
+        grid-template-rows: 1fr;
+      }
+
+      .viewer-visual {
+        position: relative;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .viewer-image {
+        width: auto;
+        height: auto;
+        max-width: calc(100vw - 452px);
+        max-height: calc(100vh - 32px);
+        object-fit: contain;
+        display: block;
+      }
+
+      .viewer-side {
+        border-left: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(10, 10, 12, 0.96);
+        color: rgba(255, 255, 255, 0.92);
+        padding: 16px 16px 12px;
+        overflow: auto;
+      }
+
+      .viewer-title {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.26;
+      }
+
+      .viewer-meta {
+        margin: 8px 0 0;
+        color: rgba(255, 255, 255, 0.78);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .viewer-prompt-head {
+        margin: 16px 0 8px;
+        color: rgba(255, 255, 255, 0.64);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .viewer-prompt {
+        margin: 0;
+        white-space: pre-wrap;
+        line-height: 1.44;
+        font-size: 13px;
+      }
+
+      .viewer-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .viewer-link,
+      .viewer-btn {
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        background: transparent;
+        color: #fff;
+        text-decoration: none;
+        height: 34px;
+        padding: 0 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        cursor: pointer;
+      }
+
+      .viewer-close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.48);
+        color: #fff;
+        font-size: 20px;
+        cursor: pointer;
+      }
+
+      .viewer-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 44px;
+        height: 44px;
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.46);
+        color: #fff;
+        font-size: 22px;
+        cursor: pointer;
+      }
+
+      .viewer-nav.prev {
+        left: 14px;
+      }
+
+      .viewer-nav.next {
+        right: 14px;
+      }
+
+      .empty {
+        border: 1px dashed var(--stroke);
+        border-radius: 14px;
+        padding: 18px;
+        color: var(--text-soft);
+      }
+
+      @media (max-width: 1180px) {
+        .top-main {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .viewer-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .viewer-side {
+          border-left: 0;
+          border-top: 1px solid rgba(255, 255, 255, 0.16);
+          max-height: 40vh;
+        }
+
+        .viewer-image {
+          max-width: calc(100vw - 32px);
+          max-height: calc(60vh - 32px);
+        }
+      }
+
+      @media (max-width: 860px) {
+        .deck-progress {
+          display: none;
+        }
+
+        .slide-title {
+          font-size: clamp(18px, 6vw, 26px);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="noise" aria-hidden="true"></div>
+
+    <header class="top" id="top">
+      <div class="top-inner">
+        <div class="top-main">
+          <div>
+            <h1 class="title">AI Cases Comparison</h1>
+            <p class="subtitle">Slide deck mode. one case = one screen. left/right switches slides. <span class="build">BUILD 20260223-18</span></p>
+          </div>
+
+          <div class="deck-controls">
+            <button id="deck-prev" class="deck-btn" type="button">prev</button>
+            <div id="deck-progress" class="deck-progress">01 / 01</div>
+            <button id="deck-next" class="deck-btn" type="button">next</button>
+          </div>
+        </div>
+
+        <nav id="case-nav" class="case-nav" aria-label="Case navigation"></nav>
+      </div>
+    </header>
+
+    <main id="content" aria-live="polite"></main>
+
+    <div id="viewer" class="viewer" role="dialog" aria-modal="true" aria-label="Image viewer">
+      <div class="viewer-layout">
+        <div class="viewer-visual">
+          <button id="viewer-close" class="viewer-close" aria-label="Close">x</button>
+          <button id="viewer-prev" class="viewer-nav prev" aria-label="Previous image">&#8249;</button>
+          <button id="viewer-next" class="viewer-nav next" aria-label="Next image">&#8250;</button>
+          <img id="viewer-image" class="viewer-image" alt="" />
+        </div>
+
+        <aside class="viewer-side">
+          <h2 id="viewer-title" class="viewer-title"></h2>
+          <p id="viewer-meta" class="viewer-meta"></p>
+          <div class="viewer-prompt-head">Prompt</div>
+          <p id="viewer-prompt" class="viewer-prompt"></p>
+          <div class="viewer-actions">
+            <a id="viewer-open-original" class="viewer-link" target="_blank" rel="noreferrer noopener">Open original</a>
+            <button id="viewer-close-side" class="viewer-btn" type="button">Close</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <script src="./manifest.js?v=20260223-18"></script>
+    <script src="./app.js?v=20260223-18"></script>
+  </body>
+</html>
